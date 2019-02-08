@@ -1,0 +1,12 @@
+---
+- hosts: all
+  tasks:
+  - mail:
+      subject: 'AWX RPM Auto Build FAILED!! Version {{ release }}' 
+      to: "m@rtinjuhl.dk"
+      body: |
+        New version build of AWX failed for:
+
+        Release Version: {{ release }}
+    delegate_to: localhost
+    when: build_exists == false

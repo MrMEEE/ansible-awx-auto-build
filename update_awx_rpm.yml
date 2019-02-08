@@ -1,0 +1,16 @@
+---
+- hosts: localhost
+  tasks:
+  - name: Commit changes to Git
+    shell: 'cd /home/awx/awx-rpm && git commit -am "Automatic Update" && git push'
+    ignore_errors: yes
+  - name: Checkout AWX-RPM from Git
+    git:
+      repo: 'https://github.com/subuk/awx-rpm.git'
+      dest: /home/awx/awx-rpm
+      version: master
+      update: yes
+  - name: Create results folder
+    file:
+      state: directory
+      path: /home/awx/awx-rpm/result

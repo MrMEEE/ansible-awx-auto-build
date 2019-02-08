@@ -1,0 +1,55 @@
+---
+- hosts: all
+  vars:
+    timestamp: "{{ '%a %b %d %Y %H:%M:%S %z' | strftime(ansible_date_time.epoch) }} Martin Juhl <mj@casalogic.dk>"
+    change: '* {{ timestamp }} {{ release }}'
+  tasks:
+  - block:
+    - debug:
+        msg: "{{ change }}"
+    - lineinfile:
+        state: present
+        insertafter: ".*%changelog.*"
+        path: /home/awx/awx-rpm/awx.spec
+        line: '{{ item }}'
+      with_items:
+        - "- New Git version build: {{ release }}"
+        - "{{ change }}"
+    - copy:
+        src: /home/awx/awx-rpm/awx.spec
+        dest: /home/awx/awx-rpm/awx-build.spec
+    - replace:
+        path: /home/awx/awx-rpm/awx-build.spec
+        regexp: '¤VERSION¤'
+        replace: '{{ release }}'
+    - replace:
+        path: /home/awx/awx-rpm/awx-build.spec
+        regexp: '¤SOURCE¤'
+        replace: 'awx-{{ release }}.tar.gz'
+    - name: Start AWX RPM Building Container
+      docker_container:
+        docker_host: "unix:///var/run/docker.sock"
+        name: awx-rpm-build
+        image: ctbuild/centos:7
+        volumes:
+          - /home/awx/awx-rpm:/source
+          - /home/awx/archive/dists/awx-{{ release }}.tar.gz:/source/awx-{{ release }}.tar.gz
+          - /home/awx/archive/rpms/:/result
+          - /tmp/awx-rpmbuild-cache:/cache
+          - /home/awx/awx-rpm/buildhelpers/centos7.yum.conf:/etc/yum.conf
+          - /home/awx/awx-rpm/buildhelpers/build.sh:/build.sh
+        detach: false
+        cleanup: yes
+        command: /build.sh awx-build.spec
+    - name: Check if build exists
+      stat: 
+        path: /home/awx/archive/rpms/awx-{{ release }}-1.el7.centos.x86_64.rpm
+      register: rpmbuild
+    - fail:
+        msg: "AWX RPM hasn't been built"
+      when: rpmbuild.stat.exists == false
+        
+    when: build_exists == false
+   
+  
+  

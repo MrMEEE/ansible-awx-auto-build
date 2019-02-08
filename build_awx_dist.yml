@@ -1,0 +1,19 @@
+---
+- hosts: localhost
+  tasks:
+  - block:
+    - name: Start AWX Building Container
+      docker_container:
+        docker_host: "unix:///var/run/docker.sock"
+        name: awx-build
+        image: centos:7
+        volumes:
+          - /home/awx/git/awx:/awx
+        detach: false
+        cleanup: yes
+        command: /awx/build-script.sh
+    - name: Copy built awx to archive
+      copy:
+        src: /home/awx/git/awx/dist/awx-{{ release }}.tar.gz
+        dest: /home/awx/archive/dists/awx-{{ release }}.tar.gz
+    when: not build_exists    
